@@ -1,0 +1,13 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"addin",
+	"id":	"18ebb73f-bf55-45e9-9639-c1680e42ad24",
+	"author":	"Pooh",
+	"description":	{
+		"":	"Create a toothe Panel on a sketch"
+	},
+	"version":	"",
+	"runOnStartup":	false,
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}
