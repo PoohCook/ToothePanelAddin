@@ -22,60 +22,107 @@ class ToothedPanel():
         return NS.Namespace(
             teethWidth=inputs.itemById("%s_teeth_width" % id),
             teethDepth=inputs.itemById("%s_teeth_depth" % id),
-            teethCount=inputs.itemById("%s_teeth_count" % id),            
+            teethCount=inputs.itemById("%s_teeth_count" % id),
+            setBack=inputs.itemById("%s_set_back" % id),            
         )
 
     def setOrigin(self, pnt):
+        app = adsk.core.Application.get()
+        sketch = adsk.fusion.Sketch.cast(app.activeEditObject)
+
         self.origin = pnt
-        self.panelWidth.setManipulator(pnt, adsk.core.Vector3D.create(1, 0, 0))
-        self.panelHeight.setManipulator(pnt, adsk.core.Vector3D.create(0, 1, 0))
+        manPnt = self.origin.copy()
+        
+        manPnt.transformBy(sketch.transform)
+        xVector = adsk.core.Vector3D.create(1, 0, 0)
+        xVector.transformBy(sketch.transform)
+        yVector = adsk.core.Vector3D.create(0, 1, 0)
+        yVector.transformBy(sketch.transform)
+        self.panelWidth.setManipulator(manPnt, xVector)
+        self.panelHeight.setManipulator(manPnt, yVector)
+        self.panelWidth.isEnabled = True
+        self.panelHeight.isEnabled = True
 
     def createScaledVector(self, vector, scale):
             retVector = vector.copy()
             retVector.scaleBy(scale)
             return retVector
-       
-    def generateSide(self, vProgress, vRelief, length, inputs):
-        tWidth = inputs.teethWidth.value
-        tDepth = inputs.teethDepth.value
-        tCount = inputs.teethCount.value
+
+    def getValues(self, inputs, length, relief):
+        return NS.Namespace(
+            tWidth=inputs.teethWidth.value,
+            tDepth=inputs.teethDepth.value,
+            tCount=inputs.teethCount.value,
+            setBack=inputs.setBack.value,
+            length=length,
+            relief=relief,
+        )        
+
+    def generateSide(self, vProgress, vRelief, values):       
+        if values.length < 0:
+            values.tWidth *= -1
+            values.setBack *= -1
+
+        if values.relief < 0:
+            values.tDepth *= -1
  
         vectors = []
-        if tCount < 0:
+        if values.tCount < 0:
             raise ValueError("invalid tCount")
         
-        elif tCount == 0:
-            vectors.append(self.createScaledVector(vProgress, length))
+        elif values.tCount == 0:
+            vectors.append(self.createScaledVector(vProgress, values.length))
         
-        elif tCount == 1:
-            prog = (length - tWidth)/2.0
+        elif values.tCount == 1:
+            prog = (values.length - values.tWidth)/2.0
+            vectors.append(self.createScaledVector(vRelief, values.tDepth))
             vectors.append(self.createScaledVector(vProgress, prog))
-            vectors.append(self.createScaledVector(vRelief, tDepth))
-            vectors.append(self.createScaledVector(vProgress, tWidth))
-            vectors.append(self.createScaledVector(vRelief, tDepth * -1))
+            vectors.append(self.createScaledVector(vRelief, values.tDepth * -1))
+            vectors.append(self.createScaledVector(vProgress, values.tWidth))
+            vectors.append(self.createScaledVector(vRelief, values.tDepth))
             vectors.append(self.createScaledVector(vProgress, prog))
+            vectors.append(self.createScaledVector(vRelief, values.tDepth * -1))
 
         else:
-            prog = (length - (tCount * tWidth))/(tCount-1)
-            for i in range(tCount-1):
-                vectors.append(self.createScaledVector(vProgress, tWidth))
-                vectors.append(self.createScaledVector(vRelief, tDepth))
-                vectors.append(self.createScaledVector(vProgress, prog))
-                vectors.append(self.createScaledVector(vRelief, tDepth * -1))
-                
-            vectors.append(self.createScaledVector(vProgress, tWidth))
+            if values.setBack != 0:
+                vectors.append(self.createScaledVector(vRelief, values.tDepth))
+                vectors.append(self.createScaledVector(vProgress, values.setBack))
+                vectors.append(self.createScaledVector(vRelief, values.tDepth * -1))
+                values.length -= (2 * values.setBack)
 
-        return vectors           
+            prog = (values.length - (values.tCount * values.tWidth))/(values.tCount-1)
+            for i in range(values.tCount-1):
+                vectors.append(self.createScaledVector(vProgress, values.tWidth))
+                vectors.append(self.createScaledVector(vRelief, values.tDepth))
+                vectors.append(self.createScaledVector(vProgress, prog))
+                vectors.append(self.createScaledVector(vRelief, values.tDepth * -1))
+                
+            vectors.append(self.createScaledVector(vProgress, values.tWidth))
+
+            if values.setBack != 0:
+                vectors.append(self.createScaledVector(vRelief, values.tDepth))
+                vectors.append(self.createScaledVector(vProgress, values.setBack))
+                vectors.append(self.createScaledVector(vRelief, values.tDepth * -1))
+
+        return vectors  
+
+    def isParallel(vec1, vec2):
+        pass         
 
     def draw(self):
         width = self.panelWidth.value
         height = self.panelHeight.value
 
+        leftValues = self.getValues(self.leftInputs, height, width)
+        topValues = self.getValues(self.topInputs, width, height)
+        rightValues = self.getValues(self.rightInputs, height, width)
+        bottomValues = self.getValues(self.bottomInputs, width, height)
+
         vectors = []
-        vectors += self.generateSide(self.up, self.right, height, self.leftInputs)
-        vectors += self.generateSide(self.right, self.down, width, self.topInputs)
-        vectors += self.generateSide(self.down, self.left, height, self.rightInputs)
-        vectors += self.generateSide(self.left, self.up, width, self.bottomInputs)
+        vectors += self.generateSide(self.up, self.right, leftValues)
+        vectors += self.generateSide(self.right, self.down, topValues)
+        vectors += self.generateSide(self.down, self.left, rightValues)
+        vectors += self.generateSide(self.left, self.up, bottomValues)
 
         app = adsk.core.Application.get()
         sketch = adsk.fusion.Sketch.cast(app.activeEditObject)

@@ -79,17 +79,19 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
 
         # Create distance value input X.
         distanceValueInput = mainInputs.addDistanceValueCommandInput('panel_width', 'Panel Width', adsk.core.ValueInput.createByReal(1))
-        distanceValueInput.setManipulator(adsk.core.Point3D.create(0, 0, 0), adsk.core.Vector3D.create(1, 0, 0))
+        # distanceValueInput.setManipulator(adsk.core.Point3D.create(0, 0, 0), adsk.core.Vector3D.create(1, 0, 0))
         distanceValueInput.expression = '10 mm'
         distanceValueInput.hasMinimumValue = False
         distanceValueInput.hasMaximumValue = False
+        distanceValueInput.isEnabled = False
         
         # Create distance value input Y.
         distanceValueInput2 = mainInputs.addDistanceValueCommandInput('panel_height', 'Panel Height', adsk.core.ValueInput.createByReal(1))
-        distanceValueInput2.setManipulator(adsk.core.Point3D.create(0, 0, 0), adsk.core.Vector3D.create(0, 1, 0))
+        # distanceValueInput2.setManipulator(adsk.core.Point3D.create(0, 0, 0), adsk.core.Vector3D.create(0, 1, 0))
         distanceValueInput2.expression = '10 mm'
         distanceValueInput2.hasMinimumValue = False
         distanceValueInput2.hasMaximumValue = False
+        distanceValueInput2.isEnabled = False
 
     def createSideTab(self, id, name, inputs):
         # Create a tab input.
@@ -99,6 +101,7 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
         tabInputs.addIntegerSpinnerCommandInput('%s_teeth_count' % id, 'Teeth', 0 , 100 , 1, int(0))
         tabInputs.addValueInput('%s_teeth_width' % id, 'Teeth Width', 'mm', adsk.core.ValueInput.createByString("thickness * 2"))
         tabInputs.addValueInput('%s_teeth_depth' % id, 'Teeth depth', 'mm', adsk.core.ValueInput.createByString("thickness"))
+        tabInputs.addValueInput('%s_set_back' % id, 'Edge set back', 'mm', adsk.core.ValueInput.createByReal(0))
 
     def notify(self, args):
         global _panel
