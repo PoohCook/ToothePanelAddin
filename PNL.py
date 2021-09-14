@@ -106,8 +106,33 @@ class ToothedPanel():
 
         return vectors  
 
-    def isParallel(vec1, vec2):
-        pass         
+    def isParallel(self, vec1, vec2):
+        return vec2.x * vec1.y == vec1.x * vec2.y
+
+    def joinSegments(self, segment1, seg1Direction, segment2, seg2Direction, concactinate=True):
+        seg1Delta = None
+        if not self.isParallel(segment1[-1], seg1Direction):
+            seg1Delta = segment1[-1]
+            del(segment1[-1])
+        seg2Delta = None
+        if not self.isParallel(segment2[0], seg2Direction):
+            seg2Delta = segment2[0]
+            del(segment2[0])
+
+        if seg1Delta:
+            segment2[0].add(seg1Delta)
+        if seg2Delta:
+            segment1[-1].add(seg2Delta)
+
+        if concactinate:
+            return segment1 + segment2
+        
+        offset = adsk.core.Vector3D.create(0,0,0)
+        if seg1Delta:
+            offset.subtract(seg1Delta)
+        if seg2Delta:
+            offset.add(seg2Delta)
+        return offset
 
     def draw(self):
         width = self.panelWidth.value
@@ -118,19 +143,27 @@ class ToothedPanel():
         rightValues = self.getValues(self.rightInputs, height, width)
         bottomValues = self.getValues(self.bottomInputs, width, height)
 
-        vectors = []
-        vectors += self.generateSide(self.up, self.right, leftValues)
-        vectors += self.generateSide(self.right, self.down, topValues)
-        vectors += self.generateSide(self.down, self.left, rightValues)
-        vectors += self.generateSide(self.left, self.up, bottomValues)
+        segmentLeft = self.generateSide(self.up, self.right, leftValues)
+        segmentTop = self.generateSide(self.right, self.down, topValues)
+        segmentRight = self.generateSide(self.down, self.left, rightValues)
+        segmentBottom = self.generateSide(self.left, self.up, bottomValues)
+
+        vectors = self.joinSegments(segmentLeft, self.up, segmentTop, self.right)
+        vectors = self.joinSegments(vectors, self.right, segmentRight, self.down)
+        vectors = self.joinSegments(vectors, self.down, segmentBottom, self.left)
+        offset = self.joinSegments(vectors, self.left, vectors, self.up, concactinate=False)
 
         app = adsk.core.Application.get()
         sketch = adsk.fusion.Sketch.cast(app.activeEditObject)
         lines = sketch.sketchCurves.sketchLines
         points = sketch.sketchPoints
-        firstPnt = points.add(self.origin)
+
+        origin = self.origin.copy()
+        origin.translateBy(offset)
+
+        firstPnt = points.add(origin)
         lastPnt = firstPnt
-        nextPnt = self.origin.copy()
+        nextPnt = origin.copy()
         for vector in vectors[:-1]:
             nextPnt.translateBy(vector)
             nextPnt = points.add(nextPnt)
