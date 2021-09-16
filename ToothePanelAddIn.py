@@ -1,12 +1,15 @@
-#Author-Pooh
-#Description-Create a toothe Panel on a sketch
+# Author-Pooh
+# Description-Create a toothe Panel on a sketch
 
-import adsk.core, adsk.fusion, adsk.cam, traceback
+import adsk.core as ac
+import adsk.fusion as af
+import traceback
 from . import PNL
 from . import CMD
 
 _panel = None
 _handlers = []
+
 
 # command properties
 commandId = 'ToothedPanel'
@@ -17,87 +20,83 @@ workspaceToUse = 'FusionSolidEnvironment'
 panelToUse = 'SketchCreatePanel'
 
 
-class MySelectHandler(adsk.core.SelectionEventHandler):
+class MySelectHandler(ac.SelectionEventHandler):
     def __init__(self):
         super().__init__()
+
     def notify(self, args):
         global _panel
         try:
-            args = adsk.core.SelectionEventArgs.cast(args)
-            pnt = adsk.fusion.SketchPoint.cast(args.selection.entity).geometry
+            args = ac.SelectionEventArgs.cast(args)
+            pnt = af.SketchPoint.cast(args.selection.entity).geometry
             args.isSelectable = True
 
-            cmd = adsk.core.Command.cast(args.firingEvent.sender)
-            selectorInput =adsk.core.SelectionCommandInput.cast(cmd.commandInputs.itemById("origin_select"))
+            cmd = ac.Command.cast(args.firingEvent.sender)
+            selectorInput = ac.SelectionCommandInput.cast(cmd.commandInputs.itemById("origin_select"))
 
             if _panel:
                 if selectorInput.selectionCount == 0:
                     _panel.setOrigin(pnt)
                 elif selectorInput.selectionCount == 1:
-                    _panel.setExtent(pnt) 
+                    _panel.setExtent(pnt)
                 else:
                     origin = selectorInput.selection(0)
                     selectorInput.clearSelection()
                     selectorInput.addSelection(origin.entity)
-                    _panel.setExtent(pnt) 
+                    _panel.setExtent(pnt)
 
-            
         except:
-            app = adsk.core.Application.get()
-            ui  = app.userInterface
-            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+            CMD.uiMessageBox('Failed:\n{}'.format(traceback.format_exc()))
 
-class MyInputChangedHandler(adsk.core.InputChangedEventHandler):
+
+class MyInputChangedHandler(ac.InputChangedEventHandler):
     def __init__(self):
         super().__init__()
+
     def notify(self, args):
         try:
-            args = adsk.core.InputChangedEventArgs.cast(args)
+            args = ac.InputChangedEventArgs.cast(args)
             if args.input.id in ["panel_width", "panel_height"]:
-                selectorInput =adsk.core.SelectionCommandInput.cast(args.inputs.itemById("origin_select"))
+                selectorInput = ac.SelectionCommandInput.cast(args.inputs.itemById("origin_select"))
                 if selectorInput.selectionCount == 2:
                     origin = selectorInput.selection(0)
                     selectorInput.clearSelection()
                     selectorInput.addSelection(origin.entity)
 
         except:
-            app = adsk.core.Application.get()
-            ui  = app.userInterface
-            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+            CMD.uiMessageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 
-class MyCommandExecutePreviewHandler(adsk.core.CommandEventHandler):
+class MyCommandExecutePreviewHandler(ac.CommandEventHandler):
     def __init__(self):
         super().__init__()
+
     def notify(self, args):
         global _panel
         try:
             if _panel:
                 _panel.draw()
         except:
-            app = adsk.core.Application.get()
-            ui  = app.userInterface
-            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))                
+            CMD.uiMessageBox('Failed:\n{}'.format(traceback.format_exc()))
 
-# Event handler that reacts to when the command is destroyed. This terminates the script.            
-class MyCommandExecuteHandler(adsk.core.CommandEventHandler):
+
+class MyCommandExecuteHandler(ac.CommandEventHandler):
     def __init__(self):
         super().__init__()
+
     def notify(self, args):
         global _panel
         try:
-            cmdArgs = adsk.core.CommandEventArgs.cast(args)
+            cmdArgs = ac.CommandEventArgs.cast(args)
             inputs = cmdArgs.command.commandInputs
             if _panel:
                 _panel.draw()
  
         except:
-            app = adsk.core.Application.get()
-            ui  = app.userInterface
-            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+            CMD.uiMessageBox('Failed:\n{}'.format(traceback.format_exc()))
 
-# Event handler that creates my Command.
-class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
+
+class MyCommandCreatedHandler(ac.CommandCreatedEventHandler):
     def __init__(self):
         super().__init__()
 
@@ -107,20 +106,20 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
 
         # Create a selection input.
         selectionInput = mainInputs.addSelectionInput('origin_select', 'Origin', 'where to originate the panel')
-        selectionInput.addSelectionFilter(adsk.core.SelectionCommandInput.SketchPoints)
-        selectionInput.setSelectionLimits(1,3)
+        selectionInput.addSelectionFilter(ac.SelectionCommandInput.SketchPoints)
+        selectionInput.setSelectionLimits(1, 3)
 
         # Create distance value input X.
-        distanceValueInput = mainInputs.addDistanceValueCommandInput('panel_width', 'Panel Width', adsk.core.ValueInput.createByReal(1))
-        # distanceValueInput.setManipulator(adsk.core.Point3D.create(0, 0, 0), adsk.core.Vector3D.create(1, 0, 0))
+        distanceValueInput = mainInputs.addDistanceValueCommandInput('panel_width', 'Panel Width',
+                                                                     ac.ValueInput.createByReal(1))
         distanceValueInput.expression = '10 mm'
         distanceValueInput.hasMinimumValue = False
         distanceValueInput.hasMaximumValue = False
         distanceValueInput.isEnabled = False
         
         # Create distance value input Y.
-        distanceValueInput2 = mainInputs.addDistanceValueCommandInput('panel_height', 'Panel Height', adsk.core.ValueInput.createByReal(1))
-        # distanceValueInput2.setManipulator(adsk.core.Point3D.create(0, 0, 0), adsk.core.Vector3D.create(0, 1, 0))
+        distanceValueInput2 = mainInputs.addDistanceValueCommandInput('panel_height', 'Panel Height',
+                                                                      ac.ValueInput.createByReal(1))
         distanceValueInput2.expression = '10 mm'
         distanceValueInput2.hasMinimumValue = False
         distanceValueInput2.hasMaximumValue = False
@@ -131,25 +130,27 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
         tabCmdInput = inputs.addTabCommandInput(id, name)
         tabInputs = tabCmdInput.children
 
-        tabInputs.addIntegerSpinnerCommandInput('%s_teeth_count' % id, 'Teeth', 0 , 100 , 1, int(0))
-        tabInputs.addValueInput('%s_teeth_width' % id, 'Teeth Width', 'mm', adsk.core.ValueInput.createByString("thickness * 2"))
-        tabInputs.addValueInput('%s_teeth_depth' % id, 'Teeth depth', 'mm', adsk.core.ValueInput.createByString("thickness"))
-        tabInputs.addValueInput('%s_set_back' % id, 'Edge set back', 'mm', adsk.core.ValueInput.createByReal(0))
+        tabInputs.addIntegerSpinnerCommandInput('%s_teeth_count' % id, 'Teeth', 0, 100, 1, int(0))
+        tabInputs.addValueInput('%s_teeth_width' % id, 'Teeth Width', 'mm',
+                                ac.ValueInput.createByString("thickness * 2"))
+        tabInputs.addValueInput('%s_teeth_depth' % id, 'Teeth depth', 'mm',
+                                ac.ValueInput.createByString("thickness"))
+        tabInputs.addValueInput('%s_set_back' % id, 'Edge set back', 'mm',
+                                ac.ValueInput.createByReal(0))
 
     def notify(self, args):
         global _panel
         try:
             # Get the command that was created.
-            cmd = adsk.core.Command.cast(args.command)
+            cmd = ac.Command.cast(args.command)
 
-            # Connect to the execute event.           
             onExecute = MyCommandExecuteHandler()
             cmd.execute.add(onExecute)
-            _handlers.append(onExecute) 
+            _handlers.append(onExecute)
 
             onSelect = MySelectHandler()
             cmd.select.add(onSelect)
-            _handlers.append(onSelect) 
+            _handlers.append(onSelect)
 
             onExecutePreview = MyCommandExecutePreviewHandler()
             cmd.executePreview.add(onExecutePreview)
@@ -171,29 +172,24 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             _panel = PNL.ToothedPanel(inputs)
 
         except:
-            app = adsk.core.Application.get()
-            ui  = app.userInterface
-            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+            CMD.uiMessageBox('Failed:\n{}'.format(traceback.format_exc()))
+
 
 def run(context):
-    ui = None
     try:
-        app = adsk.core.Application.get()
-        ui  = app.userInterface
-        CMD.addCommandToPanel(workspaceToUse, panelToUse, 
-                              commandId, commandName, commandDescription, commandResources, 
-                              MyCommandCreatedHandler())
+        onCommandCreated = MyCommandCreatedHandler()
+        _handlers.append(onCommandCreated)
+
+        CMD.addCommandToPanel(workspaceToUse, panelToUse,
+                              commandId, commandName, commandDescription, commandResources,
+                              onCommandCreated)
 
     except:
-        app = adsk.core.Application.get()
-        ui  = app.userInterface
-        ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+        CMD.uiMessageBox('Failed:\n{}'.format(traceback.format_exc()))
+
 
 def stop(context):
-    ui = None
     try:
         CMD.deleteControlAndDefinition(workspaceToUse, panelToUse, commandId)
     except:
-        app = adsk.core.Application.get()
-        ui  = app.userInterface
-        ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+        CMD.uiMessageBox('Failed:\n{}'.format(traceback.format_exc()))

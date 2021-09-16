@@ -1,10 +1,15 @@
-import adsk.core, adsk.fusion, adsk.cam
+import adsk.core as ac
+import adsk.fusion as af
 from . import NS
+
 
 class ToothedPanel():
     def __init__(self, inputs):
+        app = ac.Application.get()
+        self.sketch = af.Sketch.cast(app.activeEditObject)
+
         self.lines = None
-        self.origin = adsk.core.Point3D.create(0,0,0)
+        self.origin = ac.Point3D.create(0, 0, 0)
         self.panelWidth = inputs.itemById("panel_width")
         self.panelHeight = inputs.itemById("panel_height")
 
@@ -13,49 +18,43 @@ class ToothedPanel():
         self.bottomInputs = self.loadSideControls("bottom", inputs)
         self.leftInputs = self.loadSideControls("left", inputs)
 
-        self.up = adsk.core.Vector3D.create(0, 1, 0)
-        self.down = adsk.core.Vector3D.create(0, -1, 0)
-        self.left = adsk.core.Vector3D.create(-1, 0, 0)
-        self.right = adsk.core.Vector3D.create(1, 0, 0)
+        self.up = ac.Vector3D.create(0, 1, 0)
+        self.down = ac.Vector3D.create(0, -1, 0)
+        self.left = ac.Vector3D.create(-1, 0, 0)
+        self.right = ac.Vector3D.create(1, 0, 0)
 
     def loadSideControls(self, id, inputs):
         return NS.Namespace(
             teethWidth=inputs.itemById("%s_teeth_width" % id),
             teethDepth=inputs.itemById("%s_teeth_depth" % id),
             teethCount=inputs.itemById("%s_teeth_count" % id),
-            setBack=inputs.itemById("%s_set_back" % id),            
+            setBack=inputs.itemById("%s_set_back" % id),
         )
 
     def setOrigin(self, pnt):
-        app = adsk.core.Application.get()
-        sketch = adsk.fusion.Sketch.cast(app.activeEditObject)
-
         self.origin = pnt
         manPnt = self.origin.copy()
         
-        manPnt.transformBy(sketch.transform)
-        xVector = adsk.core.Vector3D.create(1, 0, 0)
-        xVector.transformBy(sketch.transform)
-        yVector = adsk.core.Vector3D.create(0, 1, 0)
-        yVector.transformBy(sketch.transform)
+        manPnt.transformBy(self.sketch.transform)
+        xVector = ac.Vector3D.create(1, 0, 0)
+        xVector.transformBy(self.sketch.transform)
+        yVector = ac.Vector3D.create(0, 1, 0)
+        yVector.transformBy(self.sketch.transform)
         self.panelWidth.setManipulator(manPnt, xVector)
         self.panelHeight.setManipulator(manPnt, yVector)
         self.panelWidth.isEnabled = True
         self.panelHeight.isEnabled = True
 
     def setExtent(self, pnt):
-        app = adsk.core.Application.get()
-        sketch = adsk.fusion.Sketch.cast(app.activeEditObject)
-
         if self.origin:
             vector = self.origin.vectorTo(pnt)
             self.panelWidth.value = vector.x
             self.panelHeight.value = vector.y
 
     def createScaledVector(self, vector, scale):
-            retVector = vector.copy()
-            retVector.scaleBy(scale)
-            return retVector
+        retVector = vector.copy()
+        retVector.scaleBy(scale)
+        return retVector
 
     def getValues(self, inputs, length, relief):
         return NS.Namespace(
@@ -65,9 +64,9 @@ class ToothedPanel():
             setBack=inputs.setBack.value,
             length=length,
             relief=relief,
-        )        
+        )
 
-    def generateSide(self, vProgress, vRelief, values):       
+    def generateSide(self, vProgress, vRelief, values):
         if values.length < 0:
             values.tWidth *= -1
             values.setBack *= -1
@@ -83,7 +82,7 @@ class ToothedPanel():
             vectors.append(self.createScaledVector(vProgress, values.length))
         
         elif values.tCount == 1:
-            prog = (values.length - values.tWidth)/2.0
+            prog = (values.length - values.tWidth) / 2.0
             vectors.append(self.createScaledVector(vRelief, values.tDepth))
             vectors.append(self.createScaledVector(vProgress, prog))
             vectors.append(self.createScaledVector(vRelief, values.tDepth * -1))
@@ -99,8 +98,8 @@ class ToothedPanel():
                 vectors.append(self.createScaledVector(vRelief, values.tDepth * -1))
                 values.length -= (2 * values.setBack)
 
-            prog = (values.length - (values.tCount * values.tWidth))/(values.tCount-1)
-            for i in range(values.tCount-1):
+            prog = (values.length - (values.tCount * values.tWidth)) / (values.tCount - 1)
+            for i in range(values.tCount - 1):
                 vectors.append(self.createScaledVector(vProgress, values.tWidth))
                 vectors.append(self.createScaledVector(vRelief, values.tDepth))
                 vectors.append(self.createScaledVector(vProgress, prog))
@@ -113,7 +112,7 @@ class ToothedPanel():
                 vectors.append(self.createScaledVector(vProgress, values.setBack))
                 vectors.append(self.createScaledVector(vRelief, values.tDepth * -1))
 
-        return vectors  
+        return vectors
 
     def isParallel(self, vec1, vec2):
         return vec2.x * vec1.y == vec1.x * vec2.y
@@ -136,7 +135,7 @@ class ToothedPanel():
         if concactinate:
             return segment1 + segment2
         
-        offset = adsk.core.Vector3D.create(0,0,0)
+        offset = ac.Vector3D.create(0, 0, 0)
         if seg1Delta:
             offset.subtract(seg1Delta)
         if seg2Delta:
@@ -162,10 +161,8 @@ class ToothedPanel():
         vectors = self.joinSegments(vectors, self.down, segmentBottom, self.left)
         offset = self.joinSegments(vectors, self.left, vectors, self.up, concactinate=False)
 
-        app = adsk.core.Application.get()
-        sketch = adsk.fusion.Sketch.cast(app.activeEditObject)
-        lines = sketch.sketchCurves.sketchLines
-        points = sketch.sketchPoints
+        lines = self.sketch.sketchCurves.sketchLines
+        points = self.sketch.sketchPoints
 
         origin = self.origin.copy()
         origin.translateBy(offset)

@@ -1,12 +1,16 @@
-import adsk.core, adsk.fusion, adsk.cam
-
-_handlers = []
+import adsk.core as ac
 
 
-# Some utility functions
+# Some utility functions for adding commands to toolbar pannels
 def getUi():
-    app = adsk.core.Application.get()
-    return app.userInterface
+    app = ac.Application.get()
+    return ac.UserInterface.cast(app.userInterface)
+
+
+def uiMessageBox(message):
+    ui = getUi()
+    ui.messageBox(message)
+
 
 def getWorkspacePanel(workspaceId, panelId):
     ui = getUi()
@@ -15,9 +19,10 @@ def getWorkspacePanel(workspaceId, panelId):
     toolbarPanels = modelingWorkspace.toolbarPanels
     return toolbarPanels.itemById(panelId)
 
-def deleteControlAndDefinition( workspaceId, panelId, commandId):
+
+def deleteControlAndDefinition(workspaceId, panelId, commandId):
     ui = getUi()
-    panel = getWorkspacePanel(workspaceId, panelId) 
+    panel = getWorkspacePanel(workspaceId, panelId)
     commandControl = panel.controls.itemById(commandId)
     if commandControl:
         commandControl.deleteMe()
@@ -26,20 +31,21 @@ def deleteControlAndDefinition( workspaceId, panelId, commandId):
     if commandDefinition:
         commandDefinition.deleteMe()
 
-def addCommandToPanel( workspaceId, panelId, commandId, commandName, commandDescription, commandResources, onCommandCreated):
+
+def addCommandToPanel(workspaceId, panelId,
+                      commandId, commandName, commandDescription, commandResources, onCommandCreated):
     ui = getUi()
-    toolbarPanel = getWorkspacePanel(workspaceId, panelId) 
+    toolbarPanel = getWorkspacePanel(workspaceId, panelId)
     toolbarControlsPanel = toolbarPanel.controls
     toolbarControlPanel = toolbarControlsPanel.itemById(commandId)
     if not toolbarControlPanel:
-        commandDefinitionPanel = ui.commandDefinitions.itemById(commandId)
-        if not commandDefinitionPanel:
-            commandDefinitionPanel = ui.commandDefinitions.addButtonDefinition(commandId, commandName, commandDescription, commandResources)
+        cmdDefs = ac.CommandDefinitions.cast(ui.commandDefinitions)
+        cmdDefPanel = ac.CommandDefinition.cast(cmdDefs.itemById(commandId))
+        if not cmdDefPanel:
+            cmdDefPanel = cmdDefs.addButtonDefinition(commandId, commandName,
+                                                      commandDescription, commandResources)
         
-        commandDefinitionPanel.commandCreated.add(onCommandCreated)
+        cmdDefPanel.commandCreated.add(onCommandCreated)
         
-        # Keep the handler referenced beyond this function
-        global _handlers
-        _handlers.append(onCommandCreated)
-        toolbarControlPanel = toolbarControlsPanel.addCommand(commandDefinitionPanel, '')
-        toolbarControlPanel.isVisible = True  
+        toolbarControlPanel = toolbarControlsPanel.addCommand(cmdDefPanel, '')
+        toolbarControlPanel.isVisible = True
