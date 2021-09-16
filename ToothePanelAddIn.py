@@ -23,15 +23,48 @@ class MySelectHandler(adsk.core.SelectionEventHandler):
     def notify(self, args):
         global _panel
         try:
+            args = adsk.core.SelectionEventArgs.cast(args)
             pnt = adsk.fusion.SketchPoint.cast(args.selection.entity).geometry
             args.isSelectable = True
+
+            cmd = adsk.core.Command.cast(args.firingEvent.sender)
+            selectorInput =adsk.core.SelectionCommandInput.cast(cmd.commandInputs.itemById("origin_select"))
+
             if _panel:
-                _panel.setOrigin(pnt)
+                if selectorInput.selectionCount == 0:
+                    _panel.setOrigin(pnt)
+                elif selectorInput.selectionCount == 1:
+                    _panel.setExtent(pnt) 
+                else:
+                    origin = selectorInput.selection(0)
+                    selectorInput.clearSelection()
+                    selectorInput.addSelection(origin.entity)
+                    _panel.setExtent(pnt) 
+
             
         except:
             app = adsk.core.Application.get()
             ui  = app.userInterface
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+class MyInputChangedHandler(adsk.core.InputChangedEventHandler):
+    def __init__(self):
+        super().__init__()
+    def notify(self, args):
+        try:
+            args = adsk.core.InputChangedEventArgs.cast(args)
+            if args.input.id in ["panel_width", "panel_height"]:
+                selectorInput =adsk.core.SelectionCommandInput.cast(args.inputs.itemById("origin_select"))
+                if selectorInput.selectionCount == 2:
+                    origin = selectorInput.selection(0)
+                    selectorInput.clearSelection()
+                    selectorInput.addSelection(origin.entity)
+
+        except:
+            app = adsk.core.Application.get()
+            ui  = app.userInterface
+            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
 
 class MyCommandExecutePreviewHandler(adsk.core.CommandEventHandler):
     def __init__(self):
@@ -75,7 +108,7 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
         # Create a selection input.
         selectionInput = mainInputs.addSelectionInput('origin_select', 'Origin', 'where to originate the panel')
         selectionInput.addSelectionFilter(adsk.core.SelectionCommandInput.SketchPoints)
-        selectionInput.setSelectionLimits(1,1)
+        selectionInput.setSelectionLimits(1,3)
 
         # Create distance value input X.
         distanceValueInput = mainInputs.addDistanceValueCommandInput('panel_width', 'Panel Width', adsk.core.ValueInput.createByReal(1))
@@ -120,7 +153,11 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
 
             onExecutePreview = MyCommandExecutePreviewHandler()
             cmd.executePreview.add(onExecutePreview)
-            _handlers.append(onExecutePreview)        
+            _handlers.append(onExecutePreview)
+
+            onInputChanged = MyInputChangedHandler()
+            cmd.inputChanged.add(onInputChanged)
+            _handlers.append(onInputChanged)
 
             # Get the CommandInputs collection associated with the command.
             inputs = cmd.commandInputs

@@ -43,6 +43,15 @@ class ToothedPanel():
         self.panelWidth.isEnabled = True
         self.panelHeight.isEnabled = True
 
+    def setExtent(self, pnt):
+        app = adsk.core.Application.get()
+        sketch = adsk.fusion.Sketch.cast(app.activeEditObject)
+
+        if self.origin:
+            vector = self.origin.vectorTo(pnt)
+            self.panelWidth.value = vector.x
+            self.panelHeight.value = vector.y
+
     def createScaledVector(self, vector, scale):
             retVector = vector.copy()
             retVector.scaleBy(scale)
